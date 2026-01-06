@@ -10,41 +10,47 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
 
 # Elements XPATH
-initial_startup = "wa_web_initial_startup"
-qr_code_xpath = "/html/body/div[2]/div/div/div[2]/div[3]/div[1]/div/div/div[2]/div/canvas"
-search_box_xpath = "/html/body/div[1]/div/div/div[2]/div[3]/div/div[1]/div/div[2]/div[2]/div/div[1]"
-group_members_xpath = "/html/body/div[1]/div/div/div[2]/div[4]/div/header/div[2]/div[2]/span"
-contact_info_xpath = "/html/body/div[1]/div/div/div[2]/div[4]/div/header/div[2]/div/div/div/span"
-contact_phone_xpath = "/html/body/div[1]/div/div/div[2]/div[5]/span/div/span/div/div/section/div[1]/div[2]/div/span/span"
-business_phone_xpath = "/html/body/div[1]/div/div/div[6]/span/div/span/div/div/section/div[6]/div[3]/div/div/span/span"
-send_button_xpath = "/html/body/div[1]/div/div/div[2]/div[4]/div/footer/div[1]/div/span[2]/div/div[2]/div[2]/button"
+initial_startup = "app"
+
+qr_code_box_xpath = "/html/body/div[1]/div/div/div/div/div[2]/div[2]/div[2]/div"
+qr_code_xpath = f"{qr_code_box_xpath}/div[2]/div[1]/div[2]/div/div/canvas"
+
+messages_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/header/div/div[1]/div/div[1]/span/button"
+status_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/header/div/div[1]/div/div[2]/span/button"
+
+group_members_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/div[5]/div/header/div[2]/div[2]/span"
+contact_info_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/div[5]/div/header/div[2]/div/div/div/div/span"
+
+contact_phone_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/div[6]/span/div/span/div/div/section/div[1]/div[2]/div[2]/span/div/span"
+business_phone_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/div[6]/span/div/span/div/div/section/div[11]/div[3]/div/div/span/span/span"
+send_button_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/div[5]/div/footer/div[1]/div/span/div/div/div/div[4]/div/span/button"
+
+# Flags
+isDebug = False
+
 
 def find_subject(browser, subject_name):
     try:
         print("\x1b[1m[*]\x1b[m \x1b[33mSearching subject...\x1b[m")
 
-        """ search_box = browser.find_element(By.XPATH, search_box_xpath)
-
-        search_box.send_keys(Keys.CONTROL + "a" + Keys.DELETE)
-
-        for key in subject_name:
-            search_box.send_keys(key)
-            sleep(0.1)
+        browser.find_element(By.XPATH, status_xpath).click()
+        sleep(1)
+        browser.find_element(By.XPATH, messages_xpath).click()
+        sleep(0.5)
+        browser.find_element(By.XPATH, messages_xpath).click()
+        sleep(0.5)
+        browser.find_element(By.XPATH, messages_xpath).click()
 
         sleep(1)
-        search_box.send_keys(Keys.ARROW_DOWN)
-        sleep(1) """
 
-        browser.find_element(By.XPATH, "/html/body/div[1]/div/div/div[2]/div[3]/header").click()
+        pyautogui.press('tab', presses=4)
 
-        sleep(10)
-
-        pyautogui.press('tab', presses=7)
+        sleep(1)
 
         pyautogui.hotkey('ctrl', 'a')
         pyautogui.hotkey('delete')
 
-        sleep(3)
+        sleep(2)
 
         for key in subject_name:
             pyautogui.press(key)
@@ -52,6 +58,8 @@ def find_subject(browser, subject_name):
 
         sleep(1)
         pyautogui.press('down')
+        sleep(0.1)
+        pyautogui.press('enter')
         sleep(1)
 
         return
@@ -165,7 +173,7 @@ def main():
 
     options = Options()
     options.add_argument("window-size=800,600")
-    options.add_argument("--headless")
+    if not isDebug: options.add_argument("--headless")
 
     print("\x1b[1;32m")
     print("-="*32)
@@ -193,10 +201,10 @@ def main():
     wait.until(EC.visibility_of_element_located((By.XPATH, qr_code_xpath)))
 
     print("\x1b[1m[+]\x1b[m \x1b[1;32mScan the QR code to continue...\x1b[m")
-    browser.find_element(By.CLASS_NAME, "landing-main").screenshot("qrcode.png")
+    browser.find_element(By.XPATH, qr_code_box_xpath).screenshot("qrcode.png")
     system("qrcode.png")
 
-    wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "landing-main")))
+    wait.until(EC.invisibility_of_element_located((By.XPATH, qr_code_box_xpath)))
     system("del qrcode.png")
     window = pyautogui.getWindowsWithTitle("qrcode.png")[0]
     window.activate()
