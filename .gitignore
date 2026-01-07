@@ -3,3 +3,4 @@ build/
 dist/geckodriver.log
 dist/
 .venv/
+__pycache__/
