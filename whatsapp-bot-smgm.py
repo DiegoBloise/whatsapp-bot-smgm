@@ -1,4 +1,5 @@
 import pyautogui
+import pyperclip
 from os import system
 from time import sleep
 from selenium import webdriver
@@ -22,16 +23,31 @@ group_members_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/div[5]/div/h
 contact_info_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/div[5]/div/header/div[2]/div/div/div/div/span"
 
 contact_phone_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/div[6]/span/div/span/div/div/section/div[1]/div[2]/div[2]/span/div/span"
-business_phone_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/div[6]/span/div/span/div/div/section/div[11]/div[3]/div/div/span/span/span"
+business_phone_xpaths = [
+    "/html/body/div[1]/div/div/div/div/div[3]/div/div[6]/span/div/span/div/div/section/div[11]/div[3]/div/div/span/span/span",
+    "/html/body/div[1]/div/div/div/div/div[3]/div/div[6]/span/div/span/div/div/section/div[11]/div[2]/div/div/span/span/span",
+    "/html/body/div[1]/div/div/div/div/div[3]/div/div[6]/span/div/span/div/div/section/div[12]/div[3]/div/div/span/span/span"
+]
 send_button_xpath = "/html/body/div[1]/div/div/div/div/div[3]/div/div[5]/div/footer/div[1]/div/span/div/div/div/div[4]/div/span/button"
 
 # Flags
-isDebug = False
+isDebug = True
+
+
+def message(text, severity = 'info'):
+    if severity == 'info':
+        print(f"\x1b[1m[*]\x1b[m \x1b[33m{text}\x1b[m")
+    elif severity == 'success':
+        print(f"\x1b[1m[+]\x1b[m \x1b[1;32m{text}\x1b[m")
+    elif severity == 'warn':
+        print(f"\x1b[1m[+]\x1b[m \x1b[1;33m{text}\x1b[m")
+    elif severity == 'error':
+        print(f"\x1b[1m[!]\x1b[m \x1b[1;31m{text}\x1b[m")
 
 
 def find_subject(browser, subject_name):
     try:
-        print("\x1b[1m[*]\x1b[m \x1b[33mSearching subject...\x1b[m")
+        message(text="Searching subject...")
 
         browser.find_element(By.XPATH, status_xpath).click()
         sleep(1)
@@ -50,22 +66,25 @@ def find_subject(browser, subject_name):
         pyautogui.hotkey('ctrl', 'a')
         pyautogui.hotkey('delete')
 
-        sleep(2)
+        sleep(2) 
 
-        for key in subject_name:
-            pyautogui.press(key)
-            sleep(0.1)
+        pyperclip.copy(subject_name)
+        sleep(0.2)
+
+        pyautogui.hotkey('ctrl', 'v')
+        sleep(0.5)
+
 
         sleep(1)
         pyautogui.press('down')
         sleep(0.1)
-        pyautogui.press('enter')
+        pyautogui.press('space')
         sleep(1)
 
         return
 
     except NoSuchElementException as e:
-        print(f"\x1b[1m[!]\x1b[m \x1b[1;31mSubject element not found: {e}\x1b[m")
+        message(text=f"Subject element not found: {e}", severity='error')
         input()
         browser.quit()
         exit()
@@ -73,7 +92,7 @@ def find_subject(browser, subject_name):
 
 def get_phones(browser):
     try:
-        print("\x1b[1m[*]\x1b[m \x1b[33mGetting phone list...\x1b[m")
+        message(text="Getting phone list...")
 
         wait = WebDriverWait(browser, 5)
         wait.until(EC.text_to_be_present_in_element((By.XPATH, group_members_xpath), ", "))
@@ -81,19 +100,23 @@ def get_phones(browser):
         subjects = browser.find_element(By.XPATH, group_members_xpath).text.split(", ")
         for index, subject in enumerate(subjects):
             if not subject.replace("+", "").replace(" ", "").replace("-", "").isnumeric():
-                print(f"\x1b[1m[*]\x1b[m \x1b[33mSaved contact found:\x1b[m \x1b[1m{subject}\x1b[m")
-                print("\x1b[1m[*]\x1b[m \x1b[33mExtracting phone number...\x1b[m")
+                message(text="Saved contact found:\x1b[m \x1b[1m{subject}")
+
+                message(text="Extracting phone number...")
 
                 find_subject(browser, subject)
                 phone_number = get_phone_number(browser)
-                print(f"\x1b[1m[+]\x1b[m \x1b[1;32mSuccess... | Phone: {phone_number}\x1b[m")
 
-                subjects[index] = phone_number
+                if phone_number != None:
+                    message(text=f"Success... | Phone: {phone_number}", severity='success')
+                    subjects[index] = phone_number
+                else:
+                    message(text="Number not found...")
 
         return subjects
 
     except NoSuchElementException as e:
-        print(f"\x1b[1m[!]\x1b[m \x1b[1;31mPhones list element not found: {e}\x1b[m")
+        message(text=f"Phones list element not found: {e}", severity='error')
         browser.quit()
         exit()
 
@@ -104,7 +127,7 @@ def get_phone_number(browser):
         sleep(2)
 
     except NoSuchElementException as e:
-        print(f"\x1b[1m[!]\x1b[m \x1b[1;31mContact info element not found: {e}\x1b[m")
+        message(text=f"Contact info element not found: {e}", severity='error')
         browser.quit()
         exit()
 
@@ -112,44 +135,50 @@ def get_phone_number(browser):
         phone = browser.find_element(By.XPATH, contact_phone_xpath).text
 
     except:
-        print(f"\x1b[1m[*]\x1b[m \x1b[33mNumber not found: It's a business account\x1b[m")
-
+        message(text="Number not found: It's a business account")
         try:
-            phone = browser.find_element(By.XPATH, business_phone_xpath).text
-
+            phone = browser.find_element(By.XPATH, business_phone_xpaths[0]).text
         except NoSuchElementException as e:
-            print(f"\x1b[1m[!]\x1b[m \x1b[1;31mNumber not found: {e}\x1b[m")
-            browser.quit()
-            exit()
-
+            message(text="Number not found: Trying another xpath...")
+            try:
+                phone = browser.find_element(By.XPATH, business_phone_xpaths[1]).text
+            except NoSuchElementException as e:
+                message(text="Number not found: Trying another xpath...")
+                try:
+                    phone = browser.find_element(By.XPATH, business_phone_xpaths[2]).text
+                except NoSuchElementException as e:
+                    message(text=f"Number not found: {e}", severity='error')
+                    phone = None
     return phone
 
 
 def send_text(browser, phone, text):
+    # try:
     try:
-        try:
-            text = text.replace("\\n", "%0A")
-            browser.get(f"https://web.whatsapp.com/send?phone={phone}&text={text}")
+        text = text.replace("\\n", "%0A")
+        browser.get(f"https://web.whatsapp.com/send?phone={phone}&text={text}")
 
-        except Exception as e:
-            print(f"\x1b[1m[!]\x1b[m \x1b[1;31mCould not send message: {e}\x1b[m")
-            browser.quit()
-            exit()
-        print("\x1b[1m[*]\x1b[m \x1b[33mWaiting to send the message...\x1b[m")
-
-        wait = WebDriverWait(browser, 30)
-        wait.until(EC.visibility_of_element_located((By.TAG_NAME, "footer")))
-        send_button = browser.find_element(By.XPATH, send_button_xpath)
-
-        sleep(3)
-        send_button.click()
-
-        print(f"\x1b[1m[+]\x1b[m \x1b[1;32mMessage sent to phone: {phone}\x1b[m")
-        sleep(2)
     except Exception as e:
-        print(f"\x1b[1m[!]\x1b[m \x1b[1;31mError: {e}\x1b[m")
-        browser.quit()
-        exit()
+        message(text=f"Could not send message: {e}", severity='error')
+        message("Skipping...")
+        # browser.quit()
+        # exit()
+
+    message(text="Waiting to send the message...")
+
+    wait = WebDriverWait(browser, 30)
+    wait.until(EC.visibility_of_element_located((By.TAG_NAME, "footer")))
+    send_button = browser.find_element(By.XPATH, send_button_xpath)
+
+    sleep(3)
+    send_button.click()
+
+    message(text=f"Message sent to phone: {phone}", severity='success')
+    sleep(2)
+    # except Exception as e:
+    #     message(text=f"Error: {e}", severity='error')
+    #     browser.quit()
+    #     exit()
 
 
 def banner():
@@ -164,7 +193,18 @@ def banner():
     print("\x1b[m")
 
 
-def main():
+def confirm_message(text):
+    print("\x1b[1;33m")
+    print("-="*32)
+    print("\x1b[m")
+    message(text="Are you sure you want to send\n    the following message?:\n", severity="error")
+    print(text.replace("\\n", "\n"))
+    print("\x1b[1;33m")
+    print("-="*32)
+    print("\x1b[m")
+
+
+if __name__ == "__main__":
     banner()
 
     group_name = str(input("\nEnter the group name to search \x1b[1;32m~>>\x1b[m ")).lower()
@@ -179,28 +219,28 @@ def main():
     print("-="*32)
     print("\x1b[m")
 
-    print("\x1b[1m[*]\x1b[m \x1b[33mStarting WebDriver...\x1b[m")
+    message(text="Starting WebDriver...")
     try:
         browser = webdriver.Firefox(options=options)
     except Exception as e:
-        print(f"\x1b[1m[!]\x1b[m \x1b[1;31mCould not start the WebDriver: {e}\x1b[m")
+        message(text=f"Could not start the WebDriver: {e}", severity='error')
         exit()
 
-    print("\x1b[1m[*]\x1b[m \x1b[33mAcessing WhatsAppWeb...\x1b[m")
+    message(text="Acessing WhatsAppWeb...")
     try:
         browser.get("https://web.whatsapp.com/")
     except Exception as e:
-        print(f"\x1b[1m[!]\x1b[m \x1b[1;31mCould not access WhatsAppWeb: {e}\x1b[m")
+        message(text=f"Could not access WhatsAppWeb: {e}", severity='error')
         browser.quit()
         exit()
 
     wait = WebDriverWait(browser, 120)
     wait.until(EC.visibility_of_element_located((By.ID, initial_startup)))
 
-    print("\x1b[1m[*]\x1b[m \x1b[33mLoading QR Code...\x1b[m")
+    message(text="Loading QR Code...")
     wait.until(EC.visibility_of_element_located((By.XPATH, qr_code_xpath)))
 
-    print("\x1b[1m[+]\x1b[m \x1b[1;32mScan the QR code to continue...\x1b[m")
+    message(text="Scan the QR code to continue...", severity="success")
     browser.find_element(By.XPATH, qr_code_box_xpath).screenshot("qrcode.png")
     system("qrcode.png")
 
@@ -210,40 +250,32 @@ def main():
     window.activate()
     pyautogui.hotkey('alt', 'f4')
 
-    print("\x1b[1m[*]\x1b[m \x1b[33mLoading...\x1b[m")
+    message(text="Loading...")
     wait.until(EC.visibility_of_element_located((By.ID, "pane-side")))
 
-    print("\x1b[1m[+]\x1b[m \x1b[1;32mSuccess...\x1b[m")
+    message(text="Success...", severity="success")
     sleep(2)
 
     find_subject(browser, group_name)
     phones = get_phones(browser)
 
-    print(f"\x1b[1m[*]\x1b[m \x1b[33mTotal of members: {len(phones)}\x1b[m")
+    message(text=f"Total of members: {len(phones)}")
 
-    print("\x1b[1;33m")
-    print("-="*32)
-    print("\x1b[m")
-    print("\x1b[1m[!]\x1b[m \x1b[1;31mAre you sure you want to send\n    the following message?:\n\x1b[m")
-    print(text.replace("\\n", "\n"))
-    print("\x1b[1;33m")
-    print("-="*32)
-    print("\x1b[m")
+    for phone in phones:
+        print(phone)
+
+    confirm_message(text)
 
     if input("\x1b[1m[Y/N] \x1b[1;32m~>> \x1b[m").lower() in 'y':
         print("\n\n")
-
         for i, phone in enumerate(phones):
             if phone[-4:] not in phones_to_exclude:
-                print(f"\x1b[1m[+]\x1b[m \x1b[1;33mSending Message to {i+1}º : {phone}\x1b[m")
+                message(text=f"Sending Message to {i+1}º : {phone}", severity="warn")
                 send_text(browser, phone, text)
     else:
-        print("\x1b[1m[!]\x1b[m \x1b[1;31mAborted by user.\n\x1b[m")
+        message(text="Aborted by user.\n", severity="error")
 
     browser.quit()
 
-    print("\x1b[1m[+]\x1b[m \x1b[1;32mAll done!\x1b[m")
+    message(text="All done!", severity="success")
     system("pause")
-
-
-main()
